@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Hồ Câu Bình Yên</title>
+  <!-- Thư viện chính thức của YouTube Playables -->
+  <script src="https://www.youtube.com/game_api/v1"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #1b3b48;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #fff;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    /* Thanh trạng thái trên cùng */
+    #hud-top {
+      position: fixed;
+      top: max(10px, env(safe-area-inset-top));
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .hud-card {
+      background: rgba(18, 42, 54, 0.78);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 1.5px solid rgba(255, 255, 255, 0.22);
+      border-radius: 14px;
+      padding: 8px 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+      pointer-events: auto;
+    }
+
+    .level-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    .level-badge {
+      background: linear-gradient(135deg, #ffd166, #f4a261);
+      color: #2b1d0e;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .rare-bonus {
+      font-size: 11px;
+      color: #a8e6cf;
+      font-weight: 600;
+    }
+
+    .exp-track {
+      width: 125px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .exp-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4cc9f0, #80ffdb);
+      border-radius: 999px;
+      transition: width 0.25s ease;
+    }
+
+    .exp-text {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.8);
+      margin-top: 3px;
+    }
+
+    .hud-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .score-box {
+      text-align: right;
+    }
+
+    .score-val {
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffd166;
+      line-height: 1.2;
+    }
+
+    .caught-sub {
+      font-size: 11px;
+      color: #d8f3dc;
+    }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1.5px solid rgba(255, 255, 255, 0.25);
+      background: rgba(18, 42, 54, 0.82);
+      color: #fff;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.94);
+    }
+
+    /* Thanh nút bấm phía dưới */
+    #hud-bottom {
+      position: fixed;
+      bottom: max(14px, env(safe-area-inset-bottom));
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .action-btn {
+      pointer-events: auto;
+      position: relative;
+      min-width: 140px;
+      min-height: 48px;
+      padding: 10px 16px;
+      border-radius: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.28);
+      background: linear-gradient(180deg, #2a5c6b 0%, #1d4350 100%);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+      transition: transform 0.12s ease;
+    }
+
+    .action-btn:active {
+      transform: scale(0.95);
+    }
+
+    .badge-dot {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 6px;
+      border-radius: 999px;
+      background: #ff595e;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    /* Thông báo nổi giữa màn hình */
+    #toast {
+      position: fixed;
+      top: 84px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-12px);
+      background: rgba(16, 37, 48, 0.92);
+      border: 1.5px solid #ffd166;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      z-index: 25;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Cửa sổ Modal (Túi đồ & Sổ tay cá) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 22, 30, 0.72);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 30;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-panel {
+      width: 100%;
+      max-width: 480px;
+      max-height: 82vh;
+      background: #173644;
+      border: 2px solid rgba(255, 255, 255, 0.24);
+      border-radius: 22px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    .modal-header {
+      padding: 14px 16px;
+      background: rgba(11, 27, 35, 0.55);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffd166;
+      margin: 0;
+    }
+
+    .modal-sub {
+      font-size: 12px;
+      color: #b7e4c7;
+      margin-top: 2px;
+    }
+
+    .close-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .modal-body {
+      padding: 14px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .fish-card {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1.5px solid rgba(255, 255, 255, 0.14);
+      border-radius: 16px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 4px;
+    }
+
+    .fish-card.can-merge {
+      border-color: #80ffdb;
+      background: rgba(128, 255, 219, 0.12);
+    }
+
+    .fish-preview {
+      width: 84px;
+      height: 54px;
+      display: block;
+    }
+
+    .fish-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .rarity-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .rarity-common { background: rgba(168, 218, 220, 0.22); color: #a8dadc; }
+    .rarity-rare { background: rgba(114, 239, 221, 0.22); color: #72efdd; }
+    .rarity-epic { background: rgba(255, 209, 102, 0.25); color: #ffd166; }
+
+    .fish-meta {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .merge-btn {
+      margin-top: 4px;
+      width: 100%;
+      min-height: 44px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #06d6a0, #118ab2);
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(6, 214, 160, 0.3);
+    }
+
+    .merge-btn:disabled {
+      background: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.4);
+      box-shadow: none;
+      cursor: default;
+    }
+
+    .merge-btn:not(:disabled):active {
+      transform: scale(0.96);
+    }
+
+    .empty-msg {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 32px 12px;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 360px) {
+      .modal-body {
+        grid-template-columns: 1fr;
+      }
+      .exp-track {
+        width: 96px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Thanh thông tin trên cùng -->
+  <div id="hud-top">
+    <div class="hud-card">
+      <div class="level-row">
+        <span class="level-badge" id="ui-level">Lv. 1</span>
+        <span class="rare-bonus" id="ui-bonus">Hiếm +0%</span>
+      </div>
+      <div class="exp-track">
+        <div class="exp-fill" id="ui-exp-bar"></div>
+      </div>
+      <div class="exp-text" id="ui-exp-text">0 / 100 EXP</div>
+    </div>
+
+    <div class="hud-right">
+      <div class="hud-card score-box">
+        <div class="score-val" id="ui-score">0 đ</div>
+        <div class="caught-sub" id="ui-total-caught">Đã câu: 0 cá</div>
+      </div>
+      <button class="icon-btn" id="btn-sound" aria-label="Bật/tắt âm thanh">🔊</button>
+    </div>
+  </div>
+
+  <!-- Thông báo nổi -->
+  <div id="toast"></div>
+
+  <!-- Canvas chính của game -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Thanh nút bấm phía dưới -->
+  <div id="hud-bottom">
+    <button class="action-btn" id="btn-inventory">
+      <span>🎒 Túi đồ & Ép cá</span>
+      <span class="badge-dot" id="merge-badge">0</span>
+    </button>
+    <button class="action-btn" id="btn-bestiary">
+      <span>📖 Sổ tay cá</span>
+    </button>
+  </div>
+
+  <!-- Modal Túi đồ & Ép cá -->
+  <div class="modal-backdrop" id="modal-inventory">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">🎒 Túi Đồ & Ép Cá</h2>
+          <div class="modal-sub">Ghép 2 con cá giống hệt nhau để nâng cấp ★</div>
+        </div>
+        <button class="close-btn" data-close="modal-inventory" aria-label="Đóng">✕</button>
+      </div>
+      <div class="modal-body" id="inventory-list"></div>
+    </div>
+  </div>
+
+  <!-- Modal Sổ tay cá -->
+  <div class="modal-backdrop" id="modal-bestiary">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">📖 Sổ Tay Loài Cá</h2>
+          <div class="modal-sub" id="bestiary-progress">Đã khám phá: 0 / 8 loài</div>
+        </div>
+        <button class="close-btn" data-close="modal-bestiary" aria-label="Đóng">✕</button>
+      </div>
+      <div class="modal-body" id="bestiary-list"></div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. CẤU HÌNH DỮ LIỆU LOÀI CÁ & HẰNG SỐ GAME
+    // =========================================================================
+    const STORAGE_KEY = "ho_cau_binh_yen_save_v2";
+    const MAX_PARTICLES = 30; // Giới hạn hiệu ứng hạt tối ưu cho thiết bị di động
+
+    const FISH_SPECIES = [
+      { id: "crucian",  name: "Cá Diếc Bạc",    rarity: "common", rarityName: "Thường",    points: 25,  exp: 18, body: "#a8dadc", fin: "#457b9d", stripe: "#f1faee", size: 22, weight: 32 },
+      { id: "perch",    name: "Cá Rô Đồng",     rarity: "common", rarityName: "Thường",    points: 35,  exp: 22, body: "#8ab17d", fin: "#e9c46a", stripe: "#2a9d8f", size: 24, weight: 28 },
+      { id: "goldfish", name: "Cá Vàng Đuôi Lụa",rarity: "common", rarityName: "Thường",    points: 45,  exp: 28, body: "#ff9f1c", fin: "#ffbf69", stripe: "#ffffff", size: 23, weight: 22 },
+      { id: "carp",     name: "Cá Chép Gấm",    rarity: "rare",   rarityName: "Hiếm",      points: 95,  exp: 55, body: "#f77f00", fin: "#fcbf49", stripe: "#d62828", size: 29, weight: 10 },
+      { id: "catfish",  name: "Cá Trê Ngọc",    rarity: "rare",   rarityName: "Hiếm",      points: 120, exp: 65, body: "#5e60ce", fin: "#64dfdf", stripe: "#80ffdb", size: 32, weight: 8 },
+      { id: "koi",      name: "Cá Koi Hoàng Kim",rarity: "rare",  rarityName: "Hiếm",      points: 150, exp: 80, body: "#fff3b0", fin: "#e63946", stripe: "#ffb703", size: 31, weight: 6 },
+      { id: "arowana",  name: "Cá Rồng Lửa",    rarity: "epic",   rarityName: "Siêu Hiếm", points: 320, exp: 150,body: "#e63946", fin: "#ffd166", stripe: "#ff9f1c", size: 37, weight: 2.5 },
+      { id: "moonfish", name: "Cá Mặt Trăng",   rarity: "epic",   rarityName: "Siêu Hiếm", points: 450, exp: 210,body: "#7209b7", fin: "#4cc9f0", stripe: "#f72585", size: 39, weight: 1.5 }
+    ];
+
+    // =========================================================================
+    // 2. TRẠNG THÁI GAME & TÍCH HỢP YOUTUBE PLAYABLES SDK
+    // =========================================================================
+    const ytEnv = {
+      isPlayables: false,
+      firstFrameSent: false,
+      gameReadySent: false,
+      pausedBySystem: false
+    };
+
+    const state = {
+      score: 0,
+      level: 1,
+      exp: 0,
+      totalCaught: 0,
+      inventory: [], // Mảng { speciesId, star, count }
+      bestiary: {},  // Map { speciesId: caughtCount }
+      soundEnabled: true,
+
+      // Trạng thái gameplay: IDLE | CHARGING | CASTING | WAITING | BITING | CAUGHT
+      phase: "IDLE",
+      isPointerDown: false,
+      pointerDownTime: 0,
+
+      // Ném cần & Phao
+      castCharge: 0,
+      castDir: 1,
+      castProgress: 0,
+      bobberStart: { x: 0, y: 0 },
+      bobberTarget: { x: 0, y: 0 },
+      bobberPos: { x: 0, y: 0 },
+
+      // Cá đang cắn câu & thanh lực
+      waitTimer: 0,
+      biteTimer: 0,
+      biteMaxTime: 3.6,
+      powerPos: 0.5,
+      powerDir: 1,
+      powerSpeed: 1.35,
+      perfectCenter: 0.5,
+      perfectWidth: 0.24,
+      nudgeTimer: 0,
+      currentFish: null,
+
+      // Hiệu ứng hình ảnh
+      time: 0,
+      caughtPopupTimer: 0,
+      caughtFishInfo: null,
+      particles: [],
+      ripples: [],
+      floatingTexts: [],
+      bgFish: [],
+      clouds: []
+    };
+
+    // Khởi tạo kết nối YouTube Playables SDK an toàn
+    function initYouTubeSDK() {
+      try {
+        if (typeof window.ytgame !== "undefined") {
+          ytEnv.isPlayables = Boolean(window.ytgame.IN_PLAYABLES_ENV);
+
+          // Đồng bộ trạng thái âm thanh từ nút mute của ứng dụng YouTube
+          if (window.ytgame.system) {
+            if (typeof window.ytgame.system.isAudioEnabled === "function") {
+              state.soundEnabled = window.ytgame.system.isAudioEnabled();
+              updateSoundIcon();
+            }
+            if (typeof window.ytgame.system.onAudioEnabledChange === "function") {
+              window.ytgame.system.onAudioEnabledChange((isAudioEnabled) => {
+                state.soundEnabled = Boolean(isAudioEnabled);
+                updateSoundIcon();
+              });
+            }
+            if (typeof window.ytgame.system.onPause === "function") {
+              window.ytgame.system.onPause(() => {
+                ytEnv.pausedBySystem = true;
+              });
+            }
+            if (typeof window.ytgame.system.onResume === "function") {
+              window.ytgame.system.onResume(() => {
+                ytEnv.pausedBySystem = false;
+                lastTimestamp = performance.now();
+              });
+            }
+          }
+        }
+      } catch (err) {
+        // Bỏ qua nếu chạy ngoài môi trường Playables
+      }
+    }
+
+    // =========================================================================
+    // 3. ÂM THANH TỰ SINH BẰNG WEB AUDIO API (KHÔNG DÙNG FILE NGOÀI)
+    // =========================================================================
+    let audioCtx = null;
+
+    function unlockAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+          audioCtx = new AudioContext();
+        }
+      }
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume().catch(() => {});
+      }
+    }
+
+    function playSound(type) {
+      if (!state.soundEnabled || ytEnv.pausedBySystem) return;
+      unlockAudio();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === "cast") {
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(520, now + 0.16);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        osc.start(now);
+        osc.stop(now + 0.18);
+      } else if (type === "splash") {
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(190, now);
+        osc.frequency.exponentialRampToValueAtTime(75, now + 0.22);
+        gain.gain.setValueAtTime(0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+        osc.start(now);
+        osc.stop(now + 0.24);
+      } else if (type === "bite") {
+        osc.type = "square";
+        osc.frequency.setValueAtTime(580, now);
+        osc.frequency.setValueAtTime(760, now + 0.08);
+        gain.gain.setValueAtTime(0.09, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        osc.start(now);
+        osc.stop(now + 0.18);
+      } else if (type === "catch") {
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.09);
+        osc.frequency.setValueAtTime(783.99, now + 0.18);
+        osc.frequency.setValueAtTime(1046.5, now + 0.27);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+        osc.start(now);
+        osc.stop(now + 0.42);
+      } else if (type === "miss") {
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(240, now);
+        osc.frequency.linearRampToValueAtTime(130, now + 0.25);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+        osc.start(now);
+        osc.stop(now + 0.26);
+      } else if (type === "merge") {
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.25);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+        osc.start(now);
+        osc.stop(now + 0.28);
+      }
+    }
+
+    // =========================================================================
+    // 4. LƯU & KHÔI PHỤC TIẾN TRÌNH (YOUTUBE CLOUD + LOCALSTORAGE)
+    // =========================================================================
+    function applySavedData(rawJson) {
+      if (!rawJson) return;
+      try {
+        const parsed = JSON.parse(rawJson);
+        if (typeof parsed.score === "number") state.score = parsed.score;
+        if (typeof parsed.level === "number") state.level = Math.max(1, parsed.level);
+        if (typeof parsed.exp === "number") state.exp = parsed.exp;
+        if (typeof parsed.totalCaught === "number") state.totalCaught = parsed.totalCaught;
+        if (Array.isArray(parsed.inventory)) state.inventory = parsed.inventory;
+        if (parsed.bestiary && typeof parsed.bestiary === "object") state.bestiary = parsed.bestiary;
+      } catch (e) {
+        // Dữ liệu hỏng thì giữ mặc định
+      }
+    }
+
+    async function loadGame() {
+      // Ưu tiên tải từ YouTube Playables Cloud nếu đang chạy trong YouTube
+      if (ytEnv.isPlayables && window.ytgame && window.ytgame.game && typeof window.ytgame.game.loadData === "function") {
+        try {
+          const cloudData = await window.ytgame.game.loadData();
+          if (cloudData) {
+            applySavedData(cloudData);
+            return;
+          }
+        } catch (err) {
+          // Dự phòng sang localStorage
+        }
+      }
+
+      try {
+        const localData = localStorage.getItem(STORAGE_KEY);
+        if (localData) applySavedData(localData);
+      } catch (err) {
+        // Bỏ qua nếu trình duyệt chặn storage
+      }
+    }
+
+    function saveGame() {
+      const payload = JSON.stringify({
+        score: state.score,
+        level: state.level,
+        exp: state.exp,
+        totalCaught: state.totalCaught,
+        inventory: state.inventory,
+        bestiary: state.bestiary
+      });
+
+      try {
+        localStorage.setItem(STORAGE_KEY, payload);
+      } catch (err) {}
+
+      if (ytEnv.isPlayables && window.ytgame && window.ytgame.game && typeof window.ytgame.game.saveData === "function") {
+        window.ytgame.game.saveData(payload).catch(() => {});
+      }
+    }
+
+    function reportScoreToYouTube(scoreValue) {
+      if (ytEnv.isPlayables && window.ytgame && window.ytgame.engagement && typeof window.ytgame.engagement.sendScore === "function") {
+        window.ytgame.engagement.sendScore({ value: Math.floor(scoreValue) }).catch(() => {});
+      }
+    }
+
+    // =========================================================================
+    // 5. KHỞI TẠO CANVAS & BỐ CỤC RESPONSIVE
+    // =========================================================================
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let viewW = window.innerWidth;
+    let viewH = window.innerHeight;
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    function resizeCanvas() {
+      viewW = window.innerWidth;
+      viewH = window.innerHeight;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(viewW * dpr);
+      canvas.height = Math.floor(viewH * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function getSceneMetrics() {
+      const isPortrait = viewH >= viewW;
+      const horizonY = isPortrait ? viewH * 0.43 : viewH * 0.46;
+      const pierWidth = isPortrait ? Math.min(viewW * 0.34, 155) : Math.min(viewW * 0.25, 210);
+      const pierY = horizonY + (isPortrait ? 32 : 26);
+      const fisherX = pierWidth * 0.56;
+      const fisherY = pierY;
+
+      // Vùng mặt nước có thể ném phao
+      const castMinX = pierWidth + 34;
+      const castMaxX = viewW - 34;
+      const waterTopY = horizonY + 26;
+      const waterBottomY = viewH - 92;
+
+      return { isPortrait, horizonY, pierWidth, pierY, fisherX, fisherY, castMinX, castMaxX, waterTopY, waterBottomY };
+    }
+
+    // =========================================================================
+    // 6. LOGIC CÂU CÁ, CẤP ĐỘ, TÚI ĐỒ & ÉP CÁ
+    // =========================================================================
+    function getExpNeeded(level) {
+      return 100 + (level - 1) * 45;
+    }
+
+    function getRareBonusPercent() {
+      return Math.min(45, (state.level - 1) * 3);
+    }
+
+    function addScoreAndExp(pts, expGain) {
+      state.score += pts;
+      state.exp += expGain;
+      reportScoreToYouTube(state.score);
+
+      let leveledUp = false;
+      while (state.exp >= getExpNeeded(state.level)) {
+        state.exp -= getExpNeeded(state.level);
+        state.level += 1;
+        leveledUp = true;
+      }
+
+      if (leveledUp) {
+        showToast(`🎉 Lên Cấp ${state.level}! Tỷ lệ cá hiếm +${getRareBonusPercent()}%`);
+      }
+      updateHUD();
+    }
+
+    function pickRandomFish() {
+      const rareBoost = 1 + getRareBonusPercent() / 100;
+      const weighted = FISH_SPECIES.map((f) => {
+        const mult = f.rarity === "common" ? 1 : rareBoost;
+        return { fish: f, w: f.weight * mult };
+      });
+      const totalW = weighted.reduce((sum, item) => sum + item.w, 0);
+      let r = Math.random() * totalW;
+      for (const item of weighted) {
+        r -= item.w;
+        if (r <= 0) return item.fish;
+      }
+      return FISH_SPECIES[0];
+    }
+
+    function startCharging() {
+      if (state.phase !== "IDLE") return;
+      state.phase = "CHARGING";
+      state.castCharge = 0.12;
+      state.castDir = 1;
+    }
+
+    function releaseCast() {
+      if (state.phase !== "CHARGING") return;
+      const m = getSceneMetrics();
+      const rodTip = getRodTipPosition(m);
+
+      const targetX = m.castMinX + (m.castMaxX - m.castMinX) * state.castCharge;
+      const targetY = m.waterTopY + (m.waterBottomY - m.waterTopY) * (0.28 + Math.random() * 0.45);
+
+      state.bobberStart = { x: rodTip.x, y: rodTip.y };
+      state.bobberTarget = { x: targetX, y: targetY };
+      state.bobberPos = { x: rodTip.x, y: rodTip.y };
+      state.castProgress = 0;
+      state.phase = "CASTING";
+      playSound("cast");
+    }
+
+    function triggerFishBite() {
+      const fish = pickRandomFish();
+      state.currentFish = fish;
+      state.phase = "BITING";
+      state.biteTimer = 0;
+      state.nudgeTimer = 0;
+
+      // Độ khó tăng nhẹ theo độ hiếm của cá
+      if (fish.rarity === "common") {
+        state.biteMaxTime = 3.8;
+        state.powerSpeed = 1.25;
+        state.perfectWidth = 0.25;
+      } else if (fish.rarity === "rare") {
+        state.biteMaxTime = 3.4;
+        state.powerSpeed = 1.55;
+        state.perfectWidth = 0.20;
+      } else {
+        state.biteMaxTime = 3.0;
+        state.powerSpeed = 1.85;
+        state.perfectWidth = 0.16;
+      }
+
+      state.perfectCenter = 0.25 + Math.random() * 0.5;
+      state.powerPos = Math.random() < 0.5 ? 0.08 : 0.92;
+      state.powerDir = state.powerPos < 0.5 ? 1 : -1;
+
+      spawnRipple(state.bobberPos.x, state.bobberPos.y, true);
+      spawnBubbles(state.bobberPos.x, state.bobberPos.y, 6);
+      playSound("bite");
+    }
+
+    function attemptHookFish() {
+      if (state.phase !== "BITING") return;
+
+      const halfZone = state.perfectWidth / 2;
+      const isPerfect = Math.abs(state.powerPos - state.perfectCenter) <= halfZone;
+
+      if (isPerfect && state.currentFish) {
+        const fish = state.currentFish;
+        state.phase = "CAUGHT";
+        state.caughtPopupTimer = 1.65;
+        state.caughtFishInfo = fish;
+        state.totalCaught += 1;
+
+        // Thêm vào túi đồ (cấp 1 sao)
+        addFishToInventory(fish.id, 1, 1);
+
+        // Cập nhật sổ tay cá
+        state.bestiary[fish.id] = (state.bestiary[fish.id] || 0) + 1;
+
+        addScoreAndExp(fish.points, fish.exp);
+        spawnBubbles(state.bobberPos.x, state.bobberPos.y, 10);
+        spawnFloatingText(`+${fish.points} đ  +${fish.exp} EXP`, state.bobberPos.x, state.bobberPos.y - 24, "#ffd166");
+        playSound("catch");
+        saveGame();
+      } else {
+        // Thả trượt -> cá thoát
+        spawnRipple(state.bobberPos.x, state.bobberPos.y, true);
+        spawnFloatingText("Cá thoát mất rồi!", state.bobberPos.x, state.bobberPos.y - 18, "#ff8fa3");
+        playSound("miss");
+        resetToIdle();
+      }
+    }
+
+    function resetToIdle() {
+      state.phase = "IDLE";
+      state.currentFish = null;
+      state.castCharge = 0;
+    }
+
+    function addFishToInventory(speciesId, star, amount) {
+      const existing = state.inventory.find((item) => item.speciesId === speciesId && item.star === star);
+      if (existing) {
+        existing.count += amount;
+      } else {
+        state.inventory.push({ speciesId, star, count: amount });
+      }
+    }
+
+    function mergeFish(speciesId, star) {
+      const idx = state.inventory.findIndex((item) => item.speciesId === speciesId && item.star === star);
+      if (idx === -1 || state.inventory[idx].count < 2) return;
+
+      const species = FISH_SPECIES.find((f) => f.id === speciesId);
+      if (!species) return;
+
+      // Trừ 2 con cấp hiện tại, tạo 1 con cấp sao + 1
+      state.inventory[idx].count -= 2;
+      if (state.inventory[idx].count <= 0) {
+        state.inventory.splice(idx, 1);
+      }
+
+      const nextStar = star + 1;
+      addFishToInventory(speciesId, nextStar, 1);
+
+      const bonusPts = Math.round(species.points * nextStar * 0.8);
+      const bonusExp = Math.round(species.exp * nextStar * 0.7);
+      addScoreAndExp(bonusPts, bonusExp);
+
+      playSound("merge");
+      showToast(`✨ Ép thành công ${species.name} ${nextStar}★ (+${bonusPts} đ)`);
+      saveGame();
+      renderInventoryModal();
+    }
+
+    // =========================================================================
+    // 7. HIỆU ỨNG HẠT, SÓNG NƯỚC & CHỮ NỔI
+    // =========================================================================
+    function spawnRipple(x, y, strong = false) {
+      if (state.ripples.length > 14) state.ripples.shift();
+      state.ripples.push({ x, y, r: 4, maxR: strong ? 44 : 26, alpha: strong ? 0.85 : 0.5 });
+    }
+
+    function spawnBubbles(x, y, count) {
+      for (let i = 0; i < count; i++) {
+        if (state.particles.length >= MAX_PARTICLES) state.particles.shift();
+        state.particles.push({
+          x: x + (Math.random() - 0.5) * 26,
+          y: y + (Math.random() - 0.5) * 12,
+          vx: (Math.random() - 0.5) * 24,
+          vy: -22 - Math.random() * 34,
+          r: 2 + Math.random() * 3.5,
+          life: 0.7 + Math.random() * 0.5,
+          maxLife: 1.2,
+          color: "rgba(224, 251, 252, 0.85)"
+        });
+      }
+    }
+
+    function spawnFloatingText(text, x, y, color) {
+      state.floatingTexts.push({ text, x, y, vy: -32, life: 1.25, color });
+    }
+
+    function initAmbientScene() {
+      state.clouds = [
+        { x: 0.15, y: 0.11, scale: 1.0, speed: 0.008 },
+        { x: 0.55, y: 0.08, scale: 0.8, speed: 0.005 },
+        { x: 0.85, y: 0.15, scale: 1.15, speed: 0.007 }
+      ];
+
+      state.bgFish = [];
+      for (let i = 0; i < 5; i++) {
+        state.bgFish.push({
+          rx: 0.35 + Math.random() * 0.55,
+          ry: 0.25 + Math.random() * 0.6,
+          dir: Math.random() < 0.5 ? 1 : -1,
+          speed: 0.02 + Math.random() * 0.025,
+          size: 10 + Math.random() * 8,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+
+    // =========================================================================
+    // 8. CẬP NHẬT LOGIC THEO KHUNG HÌNH (UPDATE)
+    // =========================================================================
+    function update(dt) {
+      state.time += dt;
+
+      // Mây trôi & bóng cá bơi nền
+      for (const c of state.clouds) {
+        c.x += c.speed * dt;
+        if (c.x > 1.2) c.x = -0.2;
+      }
+
+      for (const bf of state.bgFish) {
+        bf.rx += bf.dir * bf.speed * dt;
+        bf.phase += dt * 4;
+        if (bf.rx > 0.94) bf.dir = -1;
+        if (bf.rx < 0.32) bf.dir = 1;
+      }
+
+      // Cập nhật sóng nước
+      for (let i = state.ripples.length - 1; i >= 0; i--) {
+        const rp = state.ripples[i];
+        rp.r += 34 * dt;
+        rp.alpha -= 0.75 * dt;
+        if (rp.alpha <= 0 || rp.r >= rp.maxR) state.ripples.splice(i, 1);
+      }
+
+      // Cập nhật hạt bong bóng
+      for (let i = state.particles.length - 1; i >= 0; i--) {
+        const p = state.particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt;
+        if (p.life <= 0) state.particles.splice(i, 1);
+      }
+
+      // Cập nhật chữ nổi
+      for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
+        const ft = state.floatingTexts[i];
+        ft.y += ft.vy * dt;
+        ft.life -= dt;
+        if (ft.life <= 0) state.floatingTexts.splice(i, 1);
+      }
+
+      // Xử lý từng pha câu cá
+      if (state.phase === "CHARGING") {
+        state.castCharge += state.castDir * 1.15 * dt;
+        if (state.castCharge >= 1) {
+          state.castCharge = 1;
+          state.castDir = -1;
+        } else if (state.castCharge <= 0.08) {
+          state.castCharge = 0.08;
+          state.castDir = 1;
+        }
+      } else if (state.phase === "CASTING") {
+        state.castProgress += dt * 2.1;
+        const t = Math.min(1, state.castProgress);
+        const arcHeight = Math.sin(t * Math.PI) * 75;
+        state.bobberPos.x = state.bobberStart.x + (state.bobberTarget.x - state.bobberStart.x) * t;
+        state.bobberPos.y = state.bobberStart.y + (state.bobberTarget.y - state.bobberStart.y) * t - arcHeight;
+
+        if (t >= 1) {
+          state.phase = "WAITING";
+          state.waitTimer = 1.1 + Math.random() * 1.8;
+          spawnRipple(state.bobberPos.x, state.bobberPos.y, true);
+          spawnBubbles(state.bobberPos.x, state.bobberPos.y, 5);
+          playSound("splash");
+        }
+      } else if (state.phase === "WAITING") {
+        state.waitTimer -= dt;
+        if (Math.random() < dt * 1.4) {
+          spawnRipple(state.bobberPos.x, state.bobberPos.y, false);
+        }
+        if (state.waitTimer <= 0) {
+          triggerFishBite();
+        }
+      } else if (state.phase === "BITING") {
+        state.biteTimer += dt;
+        state.nudgeTimer += dt;
+
+        // Thanh lực chạy qua lại + cú giật bất ngờ từ cá vùng vẫy
+        state.powerPos += state.powerDir * state.powerSpeed * dt;
+        if (state.nudgeTimer > 0.65) {
+          state.nudgeTimer = 0;
+          const tug = (Math.random() - 0.5) * 0.14;
+          state.powerPos = Math.max(0.03, Math.min(0.97, state.powerPos + tug));
+          spawnBubbles(state.bobberPos.x, state.bobberPos.y, 3);
+        }
+
+        if (state.powerPos >= 1) {
+          state.powerPos = 1;
+          state.powerDir = -1;
+        } else if (state.powerPos <= 0) {
+          state.powerPos = 0;
+          state.powerDir = 1;
+        }
+
+        if (Math.random() < dt * 4.5) {
+          spawnRipple(state.bobberPos.x + (Math.random() - 0.5) * 14, state.bobberPos.y, false);
+        }
+
+        // Hết thời gian giữ mồi -> cá thoát
+        if (state.biteTimer >= state.biteMaxTime) {
+          spawnFloatingText("Quá chậm! Cá bơi đi mất", state.bobberPos.x, state.bobberPos.y - 18, "#ff8fa3");
+          playSound("miss");
+          resetToIdle();
+        }
+      } else if (state.phase === "CAUGHT") {
+        state.caughtPopupTimer -= dt;
+        if (state.caughtPopupTimer <= 0) {
+          resetToIdle();
+        }
+      }
+    }
+
+    // =========================================================================
+    // 9. VẼ ĐỒ HỌA CANVAS 2D (BỐI CẢNH, NHÂN VẬT NỮ & CÁ)
+    // =========================================================================
+    function getRodTipPosition(m) {
+      const swing = state.phase === "CHARGING" ? -0.32 * state.castCharge : (state.phase === "BITING" ? Math.sin(state.time * 24) * 0.08 : 0);
+      const baseX = m.fisherX + 12;
+      const baseY = m.fisherY - 26;
+      const rodLen = m.isPortrait ? 78 : 96;
+      const angle = -0.68 + swing;
+      return {
+        x: baseX + Math.cos(angle) * rodLen,
+        y: baseY + Math.sin(angle) * rodLen
+      };
+    }
+
+    // Hàm vẽ một con cá chi tiết (dùng chung cho cả màn hình chính, túi đồ và sổ tay)
+    function drawFishSprite(targetCtx, species, x, y, scale = 1, star = 1, isSilhouette = false, wiggle = 0) {
+      targetCtx.save();
+      targetCtx.translate(x, y);
+      targetCtx.scale(scale, scale);
+
+      const s = species.size;
+      const tailSwing = Math.sin(wiggle) * 4.5;
+
+      // Đổi tông màu nhẹ khi nâng cấp sao
+      let bodyColor = species.body;
+      let finColor = species.fin;
+      if (!isSilhouette && star >= 2) {
+        finColor = "#ffd166";
+      }
+      if (!isSilhouette && star >= 3) {
+        // Hào quang hoàng kim cho cá 3 sao trở lên
+        targetCtx.beginPath();
+        targetCtx.arc(0, 0, s * 1.15, 0, Math.PI * 2);
+        targetCtx.fillStyle = "rgba(255, 209, 102, 0.22)";
+        targetCtx.fill();
+      }
+
+      // Đuôi cá
+      targetCtx.beginPath();
+      targetCtx.moveTo(-s * 0.75, 0);
+      targetCtx.lineTo(-s * 1.35, -s * 0.55 + tailSwing);
+      targetCtx.lineTo(-s * 1.15, tailSwing * 0.5);
+      targetCtx.lineTo(-s * 1.35, s * 0.55 + tailSwing);
+      targetCtx.closePath();
+      targetCtx.fillStyle = isSilhouette ? "#4a5d68" : finColor;
+      targetCtx.fill();
+
+      // Vây lưng
+      targetCtx.beginPath();
+      targetCtx.moveTo(-s * 0.2, -s * 0.48);
+      targetCtx.quadraticCurveTo(s * 0.1, -s * 0.92, s * 0.35, -s * 0.42);
+      targetCtx.closePath();
+      targetCtx.fillStyle = isSilhouette ? "#4a5d68" : finColor;
+      targetCtx.fill();
+
+      // Thân cá
+      targetCtx.beginPath();
+      targetCtx.ellipse(0, 0, s, s * 0.56, 0, 0, Math.PI * 2);
+      targetCtx.fillStyle = isSilhouette ? "#37474f" : bodyColor;
+      targetCtx.fill();
+
+      if (!isSilhouette) {
+        // Vân trang trí trên thân
+        targetCtx.beginPath();
+        targetCtx.arc(-s * 0.1, 0, s * 0.32, -0.7, 0.7);
+        targetCtx.strokeStyle = species.stripe;
+        targetCtx.lineWidth = 2.5;
+        targetCtx.stroke();
+
+        // Vây bụng nhỏ
+        targetCtx.beginPath();
+        targetCtx.ellipse(-s * 0.05, s * 0.25, s * 0.24, s * 0.13, 0.4, 0, Math.PI * 2);
+        targetCtx.fillStyle = finColor;
+        targetCtx.fill();
+
+        // Mắt cá
+        targetCtx.beginPath();
+        targetCtx.arc(s * 0.52, -s * 0.12, s * 0.14, 0, Math.PI * 2);
+        targetCtx.fillStyle = "#ffffff";
+        targetCtx.fill();
+
+        targetCtx.beginPath();
+        targetCtx.arc(s * 0.55, -s * 0.12, s * 0.07, 0, Math.PI * 2);
+        targetCtx.fillStyle = "#1d2d35";
+        targetCtx.fill();
+      } else {
+        // Dấu ? cho cá chưa mở khóa
+        targetCtx.fillStyle = "#cfd8dc";
+        targetCtx.font = "bold 16px sans-serif";
+        targetCtx.textAlign = "center";
+        targetCtx.textBaseline = "middle";
+        targetCtx.fillText("?", 0, 1);
+      }
+
+      targetCtx.restore();
+    }
+
+    function drawBackground(m) {
+      // Bầu trời hoàng hôn dịu mắt
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, m.horizonY);
+      skyGrad.addColorStop(0, "#7ec4cf");
+      skyGrad.addColorStop(0.55, "#b8e0d2");
+      skyGrad.addColorStop(1, "#f6eac2");
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, viewW, m.horizonY);
+
+      // Mặt trời ấm áp
+      ctx.beginPath();
+      ctx.arc(viewW * 0.78, m.horizonY * 0.34, 34, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255, 243, 176, 0.85)";
+      ctx.fill();
+
+      // Mây bồng bềnh
+      ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+      for (const c of state.clouds) {
+        const cx = c.x * viewW;
+        const cy = c.y * viewH;
+        const r = 18 * c.scale;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.arc(cx + r * 0.9, cy - r * 0.25, r * 0.85, 0, Math.PI * 2);
+        ctx.arc(cx + r * 1.75, cy, r * 0.75, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Đồi núi xa
+      ctx.fillStyle = "#76a89c";
+      ctx.beginPath();
+      ctx.moveTo(0, m.horizonY);
+      ctx.quadraticCurveTo(viewW * 0.22, m.horizonY - 58, viewW * 0.48, m.horizonY);
+      ctx.quadraticCurveTo(viewW * 0.75, m.horizonY - 72, viewW, m.horizonY - 12);
+      ctx.lineTo(viewW, m.horizonY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Hàng cây ven bờ
+      ctx.fillStyle = "#52897d";
+      for (let x = 14; x < viewW; x += 38) {
+        const h = 18 + ((x * 13) % 14);
+        ctx.beginPath();
+        ctx.arc(x, m.horizonY - 6, h * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Mặt hồ nước xanh ngọc êm dịu
+      const waterGrad = ctx.createLinearGradient(0, m.horizonY, 0, viewH);
+      waterGrad.addColorStop(0, "#4ea8de");
+      waterGrad.addColorStop(0.45, "#2b7a9b");
+      waterGrad.addColorStop(1, "#184e68");
+      ctx.fillStyle = waterGrad;
+      ctx.fillRect(0, m.horizonY, viewW, viewH - m.horizonY);
+
+      // Gợn sóng nhẹ ngang mặt nước
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
+      ctx.lineWidth = 2;
+      for (let row = 0; row < 9; row++) {
+        const wy = m.horizonY + 24 + row * ((viewH - m.horizonY - 30) / 9);
+        const shift = Math.sin(state.time * 1.4 + row) * 18;
+        ctx.beginPath();
+        ctx.moveTo(30 + shift, wy);
+        ctx.lineTo(110 + shift, wy);
+        ctx.moveTo(viewW * 0.55 - shift, wy + 6);
+        ctx.lineTo(viewW * 0.75 - shift, wy + 6);
+        ctx.stroke();
+      }
+
+      // Bóng cá bơi lội dưới nước
+      for (const bf of state.bgFish) {
+        const bx = bf.rx * viewW;
+        const by = m.horizonY + bf.ry * (viewH - m.horizonY - 60);
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.scale(bf.dir, 1);
+        ctx.fillStyle = "rgba(12, 44, 62, 0.25)";
+        ctx.beginPath();
+        ctx.ellipse(0, 0, bf.size, bf.size * 0.42, 0, 0, Math.PI * 2);
+        ctx.fill();
+        const wag = Math.sin(bf.phase) * 3;
+        ctx.beginPath();
+        ctx.moveTo(-bf.size * 0.8, 0);
+        ctx.lineTo(-bf.size * 1.35, -bf.size * 0.4 + wag);
+        ctx.lineTo(-bf.size * 1.35, bf.size * 0.4 + wag);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Lá súng trang trí góc phải
+      const lilyX = viewW - 56;
+      const lilyY = m.horizonY + 46;
+      ctx.fillStyle = "#52b788";
+      ctx.beginPath();
+      ctx.arc(lilyX, lilyY, 18, 0.2, Math.PI * 1.85);
+      ctx.lineTo(lilyX, lilyY);
+      ctx.closePath();
+      ctx.fill();
+      // Hoa súng hồng nhỏ
+      ctx.fillStyle = "#ffafcc";
+      ctx.beginPath();
+      ctx.arc(lilyX - 3, lilyY - 3, 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawPierAndFisher(m) {
+      // Cột gỗ dưới nước
+      ctx.fillStyle = "#5c3d2e";
+      ctx.fillRect(m.pierWidth * 0.22, m.pierY, 12, 68);
+      ctx.fillRect(m.pierWidth * 0.76, m.pierY, 12, 68);
+
+      // Sàn cầu gỗ
+      ctx.fillStyle = "#8d5b4c";
+      ctx.fillRect(0, m.pierY - 8, m.pierWidth, 14);
+      ctx.fillStyle = "#a97155";
+      ctx.fillRect(0, m.pierY - 10, m.pierWidth, 5);
+
+      // Xô đựng cá bên cạnh nhân vật (đầy dần theo số cá câu được!)
+      const bucketX = m.fisherX - 34;
+      const bucketY = m.pierY - 10;
+      ctx.fillStyle = "#6c757d";
+      ctx.beginPath();
+      ctx.moveTo(bucketX - 11, bucketY - 18);
+      ctx.lineTo(bucketX + 11, bucketY - 18);
+      ctx.lineTo(bucketX + 8, bucketY);
+      ctx.lineTo(bucketX - 8, bucketY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Hiển thị đuôi cá thò ra khỏi xô khi câu được nhiều cá
+      const fishInBucket = Math.min(4, Math.floor(state.totalCaught / 3));
+      const tailColors = ["#ff9f1c", "#4cc9f0", "#ffd166", "#f72585"];
+      for (let i = 0; i < fishInBucket; i++) {
+        ctx.fillStyle = tailColors[i % tailColors.length];
+        ctx.beginPath();
+        ctx.arc(bucketX - 5 + i * 3.5, bucketY - 20 - (i % 2) * 3, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Nhân vật nữ ngồi câu cá
+      const fx = m.fisherX;
+      const fy = m.pierY - 10;
+      const sway = state.phase === "BITING" ? Math.sin(state.time * 22) * 2.5 : Math.sin(state.time * 2) * 1;
+
+      ctx.save();
+      ctx.translate(fx, fy);
+
+      // Chân đung đưa trên mép cầu gỗ
+      ctx.strokeStyle = "#f4cbb2";
+      ctx.lineWidth = 5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(6, -4);
+      ctx.lineTo(14, 10 + Math.sin(state.time * 2.5) * 2);
+      ctx.stroke();
+
+      // Váy & áo dễ thương
+      ctx.fillStyle = "#ff758f";
+      ctx.beginPath();
+      ctx.moveTo(-10, -24 + sway);
+      ctx.lineTo(10, -24 + sway);
+      ctx.lineTo(14, -2);
+      ctx.lineTo(-12, -2);
+      ctx.closePath();
+      ctx.fill();
+
+      // Tóc đuôi ngựa phía sau
+      ctx.fillStyle = "#3d2c2e";
+      ctx.beginPath();
+      ctx.ellipse(-13, -34 + sway, 6, 11, 0.35, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Đầu nhân vật
+      ctx.fillStyle = "#fde2e4";
+      ctx.beginPath();
+      ctx.arc(0, -36 + sway, 10, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Mắt & má hồng
+      ctx.fillStyle = "#2b2d42";
+      ctx.beginPath();
+      ctx.arc(4, -36 + sway, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255, 117, 143, 0.55)";
+      ctx.beginPath();
+      ctx.arc(5, -33 + sway, 2.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Mũ cói rộng vành (nâng cấp phụ kiện theo tổng số cá đã câu!)
+      ctx.fillStyle = "#f4d35e";
+      ctx.beginPath();
+      ctx.ellipse(0, -43 + sway, 17, 4.5, -0.08, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(0, -44 + sway, 9.5, Math.PI, 0);
+      ctx.fill();
+
+      // Dải ruy băng trên mũ
+      ctx.fillStyle = state.totalCaught >= 15 ? "#4cc9f0" : "#ff4d6d";
+      ctx.fillRect(-9, -45 + sway, 18, 2.5);
+
+      // Huy hiệu sao vàng trên mũ khi câu >= 10 cá
+      if (state.totalCaught >= 10) {
+        ctx.fillStyle = "#ffd166";
+        ctx.beginPath();
+        ctx.arc(6, -46 + sway, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Tay cầm cần câu
+      ctx.strokeStyle = "#fde2e4";
+      ctx.lineWidth = 4.5;
+      ctx.beginPath();
+      ctx.moveTo(2, -22 + sway);
+      ctx.lineTo(13, -26 + sway);
+      ctx.stroke();
+
+      ctx.restore();
+
+      // Cần câu (nâng cấp màu sắc theo tổng số cá câu được)
+      const tip = getRodTipPosition(m);
+      ctx.strokeStyle = state.totalCaught >= 25 ? "#ffd166" : (state.totalCaught >= 8 ? "#a8dadc" : "#6f4e37");
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(m.fisherX + 12, m.fisherY - 26);
+      ctx.lineTo(tip.x, tip.y);
+      ctx.stroke();
+
+      // Dây câu & Phao
+      if (state.phase === "CASTING" || state.phase === "WAITING" || state.phase === "BITING") {
+        const shakeX = state.phase === "BITING" ? Math.sin(state.time * 36) * 4 : 0;
+        const bobY = state.phase === "WAITING" ? Math.sin(state.time * 4) * 2.5 : (state.phase === "BITING" ? Math.cos(state.time * 28) * 4 : 0);
+        const bx = state.bobberPos.x + shakeX;
+        const by = state.bobberPos.y + bobY;
+
+        // Nếu cá đang cắn câu -> vẽ bóng cá vùng vẫy giật mạnh ngay dưới phao
+        if (state.phase === "BITING" && state.currentFish) {
+          drawFishSprite(ctx, state.currentFish, bx - 16, by + 16, 0.72, 1, true, state.time * 28);
+        }
+
+        // Dây câu nối từ đầu cần tới phao
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(tip.x, tip.y);
+        ctx.quadraticCurveTo((tip.x + bx) * 0.5, Math.max(tip.y, by) + 14, bx, by);
+        ctx.stroke();
+
+        // Phao câu tròn đỏ-trắng
+        ctx.beginPath();
+        ctx.arc(bx, by, 6.5, Math.PI, 0);
+        ctx.fillStyle = "#e63946";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(bx, by, 6.5, 0, Math.PI);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+      }
+    }
+
+    function drawEffectsAndUI(m) {
+      // Vẽ vòng sóng nước
+      for (const rp of state.ripples) {
+        ctx.strokeStyle = `rgba(255, 255, 255, ${rp.alpha})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(rp.x, rp.y, rp.r, rp.r * 0.42, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Vẽ bong bóng nước
+      for (const p of state.particles) {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Thanh lực ném cần khi nhấn giữ
+      if (state.phase === "CHARGING") {
+        const barW = 140;
+        const barH = 14;
+        const bx = m.fisherX - 10;
+        const by = m.fisherY - 82;
+
+        ctx.fillStyle = "rgba(15, 35, 45, 0.85)";
+        ctx.beginPath();
+        ctx.roundRect(bx, by, barW, barH, 8);
+        ctx.fill();
+
+        const grad = ctx.createLinearGradient(bx, 0, bx + barW, 0);
+        grad.addColorStop(0, "#80ffdb");
+        grad.addColorStop(1, "#ffd166");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect(bx + 2, by + 2, (barW - 4) * state.castCharge, barH - 4, 6);
+        ctx.fill();
+      }
+
+      // Thanh lực căn thời điểm khi cá cắn câu (BITING)
+      if (state.phase === "BITING") {
+        const barW = Math.min(viewW - 48, 290);
+        const barH = 26;
+        const bx = (viewW - barW) / 2;
+        const by = m.horizonY - 56;
+
+        // Khung nền thanh lực
+        ctx.fillStyle = "rgba(14, 34, 44, 0.9)";
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, barW, barH, 13);
+        ctx.fill();
+        ctx.stroke();
+
+        // Vùng "Hoàn hảo" màu xanh ngọc
+        const zoneW = barW * state.perfectWidth;
+        const zoneX = bx + barW * state.perfectCenter - zoneW / 2;
+        ctx.fillStyle = "#06d6a0";
+        ctx.beginPath();
+        ctx.roundRect(zoneX, by + 3, zoneW, barH - 6, 8);
+        ctx.fill();
+
+        // Kim chỉ thị nhấp nháy chạy qua lại
+        const needleX = bx + barW * state.powerPos;
+        ctx.fillStyle = "#ffd166";
+        ctx.beginPath();
+        ctx.roundRect(needleX - 4, by - 4, 8, barH + 8, 4);
+        ctx.fill();
+
+        // Thanh đếm ngược thời gian cá giữ mồi
+        const timeRatio = Math.max(0, 1 - state.biteTimer / state.biteMaxTime);
+        ctx.fillStyle = timeRatio < 0.3 ? "#ff595e" : "#4cc9f0";
+        ctx.fillRect(bx + 10, by + barH + 6, (barW - 20) * timeRatio, 4);
+
+        // Chữ hướng dẫn rõ ràng
+        ctx.fillStyle = "#ffd166";
+        ctx.font = "bold 15px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("❗ CÁ CẮN CÂU! THẢ ĐÚNG VÙNG XANH!", viewW / 2, by - 12);
+      } else if (state.phase === "IDLE") {
+        // Nhắc thao tác nhẹ nhàng ở giữa vùng nước
+        ctx.fillStyle = "rgba(255, 255, 255, 0.88)";
+        ctx.font = "bold 15px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("🎣 Nhấn giữ màn hình để ném cần", viewW * 0.58, m.horizonY - 22);
+      } else if (state.phase === "WAITING") {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+        ctx.font = "600 14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Đang chờ cá cắn câu...", viewW * 0.58, m.horizonY - 22);
+      }
+
+      // Hiệu ứng khoe cá vừa câu được
+      if (state.phase === "CAUGHT" && state.caughtFishInfo) {
+        const cx = viewW / 2;
+        const cy = m.horizonY - 10;
+
+        ctx.fillStyle = "rgba(14, 34, 44, 0.88)";
+        ctx.strokeStyle = "#ffd166";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.roundRect(cx - 125, cy - 68, 250, 128, 20);
+        ctx.fill();
+        ctx.stroke();
+
+        drawFishSprite(ctx, state.caughtFishInfo, cx, cy - 16, 1.35, 1, false, state.time * 10);
+
+        ctx.fillStyle = "#ffd166";
+        ctx.font = "bold 16px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(`Câu được: ${state.caughtFishInfo.name}!`, cx, cy + 28);
+
+        ctx.fillStyle = "#a8e6cf";
+        ctx.font = "600 13px sans-serif";
+        ctx.fillText(`${state.caughtFishInfo.rarityName} • +${state.caughtFishInfo.points} đ • +${state.caughtFishInfo.exp} EXP`, cx, cy + 48);
+      }
+
+      // Vẽ chữ nổi (+điểm, thông báo)
+      for (const ft of state.floatingTexts) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, ft.life);
+        ctx.fillStyle = ft.color;
+        ctx.font = "bold 15px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, viewW, viewH);
+      const m = getSceneMetrics();
+      drawBackground(m);
+      drawPierAndFisher(m);
+      drawEffectsAndUI(m);
+
+      // Báo cho YouTube Playables ngay sau khi khung hình đầu tiên hiển thị
+      if (!ytEnv.firstFrameSent) {
+        ytEnv.firstFrameSent = true;
+        if (ytEnv.isPlayables && window.ytgame && window.ytgame.game && typeof window.ytgame.game.firstFrameReady === "function") {
+          try {
+            window.ytgame.game.firstFrameReady();
+          } catch (e) {}
+        }
+      }
+    }
+
+    // =========================================================================
+    // 10. ĐIỀU KHIỂN CẢM ỨNG & CHUỘT THỐNG NHẤT
+    // =========================================================================
+    function handlePointerDown(e) {
+      if (e.cancelable) e.preventDefault();
+      unlockAudio();
+
+      state.isPointerDown = true;
+      state.pointerDownTime = performance.now();
+
+      if (state.phase === "IDLE") {
+        startCharging();
+      }
+    }
+
+    function handlePointerUp(e) {
+      if (e.cancelable) e.preventDefault();
+      if (!state.isPointerDown) return;
+      state.isPointerDown = false;
+
+      if (state.phase === "CHARGING") {
+        releaseCast();
+      } else if (state.phase === "BITING") {
+        attemptHookFish();
+      }
+    }
+
+    canvas.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("mouseup", handlePointerUp);
+    canvas.addEventListener("touchstart", handlePointerDown, { passive: false });
+    window.addEventListener("touchend", handlePointerUp, { passive: false });
+    window.addEventListener("resize", resizeCanvas);
+
+    // =========================================================================
+    // 11. GIAO DIỆN HUD, TÚI ĐỒ & SỔ TAY CÁ
+    // =========================================================================
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 2400);
+    }
+
+    function updateSoundIcon() {
+      document.getElementById("btn-sound").textContent = state.soundEnabled ? "🔊" : "🔇";
+    }
+
+    function updateHUD() {
+      const needed = getExpNeeded(state.level);
+      const pct = Math.min(100, (state.exp / needed) * 100);
+
+      document.getElementById("ui-level").textContent = `Lv. ${state.level}`;
+      document.getElementById("ui-bonus").textContent = `Hiếm +${getRareBonusPercent()}%`;
+      document.getElementById("ui-exp-bar").style.width = `${pct}%`;
+      document.getElementById("ui-exp-text").textContent = `${state.exp} / ${needed} EXP`;
+      document.getElementById("ui-score").textContent = `${state.score.toLocaleString("vi-VN")} đ`;
+      document.getElementById("ui-total-caught").textContent = `Đã câu: ${state.totalCaught} cá`;
+
+      // Đếm số cặp cá có thể ép
+      const mergeableCount = state.inventory.filter((item) => item.count >= 2).length;
+      const badge = document.getElementById("merge-badge");
+      if (mergeableCount > 0) {
+        badge.style.display = "flex";
+        badge.textContent = mergeableCount;
+      } else {
+        badge.style.display = "none";
+      }
+    }
+
+    function createFishMiniCanvas(species, star, isSilhouette) {
+      const c = document.createElement("canvas");
+      c.width = 168;
+      c.height = 108;
+      c.className = "fish-preview";
+      const cctx = c.getContext("2d");
+      const scale = Math.min(1.45, 0.95 + (star - 1) * 0.16);
+      drawFishSprite(cctx, species, 88, 54, scale, star, isSilhouette, 0.5);
+      return c;
+    }
+
+    function renderInventoryModal() {
+      const container = document.getElementById("inventory-list");
+      container.innerHTML = "";
+
+      if (state.inventory.length === 0) {
+        container.innerHTML = `<div class="empty-msg">Túi đồ đang trống.<br/>Hãy ném cần câu vài chú cá nhé!</div>`;
+        return;
+      }
+
+      // Sắp xếp cá có thể ép lên đầu
+      const sorted = [...state.inventory].sort((a, b) => (b.count >= 2 ? 1 : 0) - (a.count >= 2 ? 1 : 0) || b.star - a.star);
+
+      for (const item of sorted) {
+        const species = FISH_SPECIES.find((f) => f.id === item.speciesId);
+        if (!species) continue;
+
+        const canMerge = item.count >= 2;
+        const card = document.createElement("div");
+        card.className = `fish-card ${canMerge ? "can-merge" : ""}`;
+
+        card.appendChild(createFishMiniCanvas(species, item.star, false));
+
+        const starsStr = "★".repeat(item.star);
+        const valueEach = Math.round(species.points * Math.pow(1.6, item.star - 1));
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "fish-name";
+        nameEl.textContent = `${species.name} (${starsStr})`;
+
+        const metaEl = document.createElement("div");
+        metaEl.className = "fish-meta";
+        metaEl.textContent = `Số lượng: x${item.count} • Giá trị: ${valueEach} đ`;
+
+        const btn = document.createElement("button");
+        btn.className = "merge-btn";
+        btn.disabled = !canMerge;
+        btn.textContent = canMerge ? `✨ Ép lên ${item.star + 1}★ (Cần 2)` : "Cần 2 con giống nhau";
+        btn.addEventListener("click", () => mergeFish(item.speciesId, item.star));
+
+        card.appendChild(nameEl);
+        card.appendChild(metaEl);
+        card.appendChild(btn);
+        container.appendChild(card);
+      }
+    }
+
+    function renderBestiaryModal() {
+      const container = document.getElementById("bestiary-list");
+      container.innerHTML = "";
+
+      let discovered = 0;
+      for (const species of FISH_SPECIES) {
+        const caughtCount = state.bestiary[species.id] || 0;
+        const isUnlocked = caughtCount > 0;
+        if (isUnlocked) discovered++;
+
+        const card = document.createElement("div");
+        card.className = "fish-card";
+
+        card.appendChild(createFishMiniCanvas(species, 1, !isUnlocked));
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "fish-name";
+        nameEl.textContent = isUnlocked ? species.name : "Loài cá bí ẩn";
+
+        const rarityEl = document.createElement("span");
+        rarityEl.className = `rarity-tag rarity-${species.rarity}`;
+        rarityEl.textContent = species.rarityName;
+
+        const metaEl = document.createElement("div");
+        metaEl.className = "fish-meta";
+        metaEl.textContent = isUnlocked ? `Đã bắt: ${caughtCount} lần` : "Chưa từng câu được";
+
+        card.appendChild(nameEl);
+        card.appendChild(rarityEl);
+        card.appendChild(metaEl);
+        container.appendChild(card);
+      }
+
+      document.getElementById("bestiary-progress").textContent = `Đã khám phá: ${discovered} / ${FISH_SPECIES.length} loài`;
+    }
+
+    // Gắn sự kiện cho các nút UI
+    document.getElementById("btn-sound").addEventListener("click", () => {
+      state.soundEnabled = !state.soundEnabled;
+      updateSoundIcon();
+      if (state.soundEnabled) unlockAudio();
+    });
+
+    document.getElementById("btn-inventory").addEventListener("click", () => {
+      renderInventoryModal();
+      document.getElementById("modal-inventory").classList.add("open");
+    });
+
+    document.getElementById("btn-bestiary").addEventListener("click", () => {
+      renderBestiaryModal();
+      document.getElementById("modal-bestiary").classList.add("open");
+    });
+
+    document.querySelectorAll(".close-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.getAttribute("data-close");
+        document.getElementById(targetId).classList.remove("open");
+      });
+    });
+
+    document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+      backdrop.addEventListener("click", (e) => {
+        if (e.target === backdrop) backdrop.classList.remove("open");
+      });
+    });
+
+    // =========================================================================
+    // 12. VÒNG LẶP CHÍNH & KHỞI CHẠY GAME
+    // =========================================================================
+    let lastTimestamp = performance.now();
+
+    function gameLoop(now) {
+      const dt = Math.min(0.05, (now - lastTimestamp) / 1000);
+      lastTimestamp = now;
+
+      if (!ytEnv.pausedBySystem) {
+        update(dt);
+        draw();
+      }
+      requestAnimationFrame(gameLoop);
+    }
+
+    async function init() {
+      initYouTubeSDK();
+      resizeCanvas();
+      initAmbientScene();
+      await loadGame();
+      updateHUD();
+      draw();
+
+      // Báo cho YouTube Playables rằng game đã sẵn sàng tương tác
+      if (!ytEnv.gameReadySent) {
+        ytEnv.gameReadySent = true;
+        if (ytEnv.isPlayables && window.ytgame && window.ytgame.game && typeof window.ytgame.game.gameReady === "function") {
+          try {
+            window.ytgame.game.gameReady();
+          } catch (e) {}
+        }
+      }
+
+      lastTimestamp = performance.now();
+      requestAnimationFrame(gameLoop);
+    }
+
+    init();
+  </script>
+</body>
+</html>
