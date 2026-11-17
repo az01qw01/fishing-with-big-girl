@@ -1,0 +1,21 @@
+async function loadGame() {
+      // Chỉ gọi YouTube Cloud khi thực sự đang chạy trong môi trường YouTube Playables
+      if (ytEnv.isPlayables && window.ytgame && window.ytgame.game && typeof window.ytgame.game.loadData === "function") {
+        try {
+          const cloudData = await window.ytgame.game.loadData();
+          if (cloudData) {
+            applySavedData(cloudData);
+            return;
+          }
+        } catch (err) {
+          // Dự phòng sang localStorage
+        }
+      }
+
+      try {
+        const localData = localStorage.getItem(STORAGE_KEY);
+        if (localData) applySavedData(localData);
+      } catch (err) {
+        // Bỏ qua nếu trình duyệt chặn storage
+      }
+    }
